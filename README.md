@@ -1,3 +1,5 @@
+> Актуальная версия: **1.2.1 · 32 команды**. Закрой окно старой программы перед запуском нового EXE. После запуска откроется локальная студия: подключи камеру, затем включи «Начать управление Windows».
+
 # FlowTouch
 
 [Открыть сайт](https://itsteamswift.github.io/FlowTouch/) · [FlowTouch Studio](https://itsteamswift.github.io/FlowTouch/studio/)

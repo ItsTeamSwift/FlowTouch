@@ -79,7 +79,8 @@ class Controller:
                     self.user32.SetCursorPos(round(x * (w-1)), round(y * (h-1)))
             elif not self.dry_run:
                 if action in URLS:
-                    webbrowser.open_new_tab(URLS[action])
+                    if not webbrowser.open_new_tab(URLS[action]):
+                        raise OSError('Windows could not open the default browser')
                 elif action in APPS:
                     subprocess.Popen([str(APPS[action])])
                 elif action in KEYS:
@@ -119,10 +120,14 @@ def make_handler(root, controller):
             self.wfile.write(body)
 
         def do_GET(self):
-            if not self.allowed():
+            # Cross-site top-level navigation may open the public UI, never the session API.
+            ui_navigation = (not self.path.startswith('/api/') and self.headers.get('Host') in HOSTS
+                             and self.headers.get('Sec-Fetch-Mode') == 'navigate'
+                             and self.headers.get('Sec-Fetch-Dest') == 'document')
+            if not self.allowed() and not ui_navigation:
                 return self.reply(403, {'error': 'Local origin required'})
             if self.path == '/api/session':
-                return self.reply(200, {'token': controller.token, 'platform': 'windows', 'app': 'FlowTouch', 'version':'1.1.0', 'dryRun': controller.dry_run})
+                return self.reply(200, {'token': controller.token, 'platform': 'windows', 'app': 'FlowTouch', 'version':'1.2.1', 'dryRun': controller.dry_run})
             if self.path.startswith('/api/'):
                 return self.reply(404, {'error': 'Not found'})
             super().do_GET()
@@ -144,10 +149,13 @@ def make_handler(root, controller):
                 self.reply(200, {'ok': True})
             except PermissionError as error:
                 self.reply(409, {'error': str(error)})
+            except OSError as error:
+                self.reply(500, {'error': str(error)})
             except (ValueError, TypeError):
                 self.reply(400, {'error': 'Invalid command'})
 
         def end_headers(self):
+            self.send_header('Cache-Control', 'no-store')
             self.send_header('X-Content-Type-Options', 'nosniff')
             self.send_header('Cross-Origin-Resource-Policy', 'same-origin')
             self.send_header('Permissions-Policy', 'camera=(self), microphone=()')
@@ -194,7 +202,7 @@ def main():
     print('Enable commands in the local studio. Escape pauses OS control globally.')
     print('Close this window or press Ctrl+C to stop the companion.')
     if not args.no_browser:
-        webbrowser.open('http://127.0.0.1:8765/studio/')
+        webbrowser.open('http://127.0.0.1:8765/studio/?desktop=1&v=1.2.1')
     try:
         server.serve_forever()
     except KeyboardInterrupt:

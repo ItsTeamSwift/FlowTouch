@@ -45,6 +45,15 @@ class CompanionTests(unittest.TestCase):
             connection.request('POST', '/api/action', json.dumps(data), {'Host':'127.0.0.1:8765','Origin':origin,'Content-Type':'application/json','X-FlowTouch-Token':token or self.c.token})
             response = connection.getresponse(); response.read(); connection.close(); return response.status
         try:
+            connection = http.client.HTTPConnection('127.0.0.1', server.server_port)
+            headers = {'Host':'127.0.0.1:8765','Sec-Fetch-Site':'cross-site','Sec-Fetch-Mode':'navigate','Sec-Fetch-Dest':'document'}
+            connection.request('GET','/studio/',headers=headers)
+            response = connection.getresponse(); response.read()
+            self.assertEqual(response.status,200)
+            connection.request('GET','/api/session',headers=headers)
+            response = connection.getresponse(); response.read()
+            self.assertEqual(response.status,403)
+            connection.close()
             self.assertEqual(post({'action':'arm'}, origin='https://external.example'), 403)
             self.assertEqual(post({'action':'arm'}, token='wrong'), 403)
             self.assertEqual(post({'action':'click'}), 409)
